@@ -1,0 +1,44 @@
+#!/bin/bash
+if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourced."; return 255; fi
+
+IDZ_OPENSSL_VERSION=1.0.1i
+IDZ_OPENSSL_URL=http://www.openssl.org/source/
+
+IDZ_OPENSSL_FILE=openssl-$IDZ_OPENSSL_VERSION.tar.gz
+IDZ_OPENSSL_MD5=$IDZ_OPENSSL_FILE.md5
+
+IDZ_OPENSSL_DIR=~/Documents/idz_builds/openssl/$IDZ_OPENSSL_VERSION
+
+function idz_error_check ()
+{
+  if [ $1 -ne 0 ]; then
+    exit $1
+  fi
+}
+
+mkdir -p $IDZ_OPENSSL_DIR
+pushd $IDZ_OPENSSL_DIR > /dev/null
+
+echo "Downloading $IDZ_OPENSSL_FILE"
+curl -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_FILE
+idz_error_check $?
+
+echo "Downloading $IDZ_OPENSSL_MD5"
+curl -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_MD5
+idz_error_check $?
+
+calculated_md5=$(md5 $IDZ_OPENSSL_FILE | cut -f 2 -d "=")
+expected_md5=$(cat $IDZ_OPENSSL_MD5)
+if [ $calculated_md5 != $expected_md5 ]; then 
+  echo "MD5 check: FAIL (expected=$expected_md5 calculated=$calculated_md5)"
+  exit 1
+fi
+echo "MD5 check: PASS"; 
+
+echo "Decompressing $IDZ_OPENSSL_FILE"
+tar xfz $IDZ_OPENSSL_FILE
+idz_error_check $?
+echo "Decompression complete."
+
+popd > /dev/null
+
