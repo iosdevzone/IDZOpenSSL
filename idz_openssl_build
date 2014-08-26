@@ -1,0 +1,16 @@
+#!/bin/bash
+if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourced."; return 255; fi
+
+. idz_openssl_config.bash
+
+pushd $IDZ_OPENSSL_SRC_DIR > /dev/null
+for IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILDLIST ; do
+  Building $IDZ_OPENSSL_BUILD
+  ./Configure no-dso no-engines no-asm no-shared \
+    --openssldir=/tmp/openssl/$IDZ_OPENSSL_BUILD $IDZ_OPENSSL_BUILD
+  make clean
+  make depend > $IDZ_OPENSSL_BUILD_depend.log 2>&1
+  make > $IDZ_OPENSSL_BUILD_build.log 2>&1
+  make install_sw > $IDZ_OPENSSL_BUILD_install.log 2>&1
+done
+popd > /dev/null
