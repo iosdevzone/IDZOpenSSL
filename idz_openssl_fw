@@ -1,0 +1,45 @@
+#!/bin/bash
+if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourced."; return 255; fi
+
+. idz_openssl_config.bash
+
+for BUILD in $IDZ_OPENSSL_BUILDLIST
+do
+  pushd $IDZ_OPENSSL_BUILD_DIR/$BUILD/lib
+  ar -x libcrypto.a
+  ar -x libssl.a
+  ar -cr libOpenSSL.a *.o
+  rm *.o
+  popd
+done
+
+mkdir -p $IDZ_OPENSSL_BUILD_DIR/fatlib
+lipo -create -output $IDZ_OPENSSL_BUILD_DIR/fatlib/libOpenSSL.a \
+  -arch armv7  $IDZ_OPENSSL_BUILD_DIR/ios-armv7-clang/lib/libOpenSSL.a \
+  -arch armv7s $IDZ_OPENSSL_BUILD_DIR/ios-armv7s-clang/lib/libOpenSSL.a \
+  -arch arm64  $IDZ_OPENSSL_BUILD_DIR/ios-arm64-clang/lib/libOpenSSL.a \
+  -arch i386 $IDZ_OPENSSL_BUILD_DIR/ios-i386-clang/lib/libOpenSSL.a \
+  -arch x86_64 $IDZ_OPENSSL_BUILD_DIR/ios-x86_64-clang/lib/libOpenSSL.a
+
+FWBASE=$IDZ_OPENSSL_DIR/OpenSSL.framework
+if [ -e $FWBASE ] ; then 
+  mv $FWBASE $FWBASE.bak
+fi
+
+VERSIONBASE=$FWBASE/Verions/$IDZ_OPENSSL_VERSION
+mkdir -p $VERSIONBASE/lib
+cp -R $IDZ_OPENSSL_BUILD_DIR/ios-armv7-clang/include $VERSIONBASE
+cp $IDZ_OPENSSL_BUILD_DIR/fatlib/libOpenSSL.a $VERSIONBASE/lib
+
+pushd $FWBASE
+if [ -e Headers ] ; then
+  rm Headers
+fi
+ln -s Verions/$IDZ_OPENSSL_VERSION/include/openssl Headers
+
+if [ -e OpenSSL ] ; then
+  rm OpenSSL
+fi
+
+ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.a OpenSSL
+popd

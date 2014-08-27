@@ -5,9 +5,10 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 
 pushd $IDZ_OPENSSL_SRC_DIR > /dev/null
 for IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILDLIST ; do
-  Building $IDZ_OPENSSL_BUILD
+  mkdir -p $IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
+  echo Building $IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
   ./Configure no-dso no-engines no-asm no-shared \
-    --openssldir=/tmp/openssl/$IDZ_OPENSSL_BUILD $IDZ_OPENSSL_BUILD
+    --openssldir=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD $IDZ_OPENSSL_BUILD
   make clean
   make depend > $IDZ_OPENSSL_BUILD_depend.log 2>&1
   make > $IDZ_OPENSSL_BUILD_build.log 2>&1
