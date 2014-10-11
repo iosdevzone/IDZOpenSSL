@@ -1,5 +1,4 @@
-IDZOpenSSL
-==========
+# IDZOpenSSL [![Build Status](https://travis-ci.org/iosdevzone/IDZOpenSSL.svg?branch=master)](https://travis-ci.org/iosdevzone/IDZOpenSSL)
 
 Scripts to compile OpenSSL for iOS.
 

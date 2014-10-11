@@ -43,3 +43,5 @@ fi
 
 ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.a OpenSSL
 popd
+
+echo "Created framework in $IDZ_OPENSSL_DIR/OpenSSL.framework"
