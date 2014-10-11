@@ -10,6 +10,7 @@ function idz_error_check ()
   fi
 }
 
+echo "Making directory $IDZ_OPENSSL_DIR"
 mkdir -p $IDZ_OPENSSL_DIR
 pushd $IDZ_OPENSSL_DIR > /dev/null
 

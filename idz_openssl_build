@@ -6,12 +6,13 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 pushd $IDZ_OPENSSL_SRC_DIR > /dev/null
 for IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILDLIST ; do
   mkdir -p $IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
-  echo Building $IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
   ./Configure no-dso no-engines no-asm no-shared \
-    --openssldir=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD $IDZ_OPENSSL_BUILD
-  make clean
-  make depend > $IDZ_OPENSSL_BUILD_depend.log 2>&1
-  make > $IDZ_OPENSSL_BUILD_build.log 2>&1
-  make install_sw > $IDZ_OPENSSL_BUILD_install.log 2>&1
+    --openssldir=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD $IDZ_OPENSSL_BUILD \
+    > ${IDZ_OPENSSL_BUILD}_configure.log 2>&1
+  IDZ_OPENSSH_LOG_DIR=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
+  make clean > ${IDZ_OPENSSL_LOG_DIR}/clean.log 2>&1
+  make depend > ${IDZ_OPENSSL_LOG_DIR}/depend.log 2>&1
+  make > ${IDZ_OPENSSL_LOG_DIR}/build.log 2>&1
+  make install_sw > ${IDZ_OPENSSL_LOG_DIR}/install.log 2>&1
 done
 popd > /dev/null

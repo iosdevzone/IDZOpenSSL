@@ -3,7 +3,7 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 
 . idz_openssl_config.bash
 
-IDZ_OPENSSL_PATCH=`pwd`/Configure.patch
+IDZ_OPENSSL_PATCH=`pwd`/Configure${IDZ_IOS_SDK_VERSION}.patch
 pushd $IDZ_OPENSSL_SRC_DIR > /dev/null
 echo Working in `pwd`
 patch Configure $IDZ_OPENSSL_PATCH
