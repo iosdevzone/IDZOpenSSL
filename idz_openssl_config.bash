@@ -1,7 +1,7 @@
 #
 # Remote configuration 
 #
-IDZ_IOS_SDK_VERSION=8.1
+IDZ_IOS_SDK_VERSION=8.0
 IDZ_OPENSSL_VERSION=1.0.1i
 IDZ_OPENSSL_URL=https://www.openssl.org/source/
 IDZ_OPENSSL_SRC_DIR_NAME=openssl-$IDZ_OPENSSL_VERSION
