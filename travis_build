@@ -3,7 +3,7 @@ cd ..
 mkdir -p IDZBuildRoot
 export IDZ_BUILD_ROOT=`pwd`/IDZBuildRoot
 echo "IDZ_BUILD_ROOT=$IDZ_BUILD_ROOT"
-
+which curl
 pushd IDZOpenSSL
 ./idz_openssl_fetch
 ./idz_openssl_build_new
