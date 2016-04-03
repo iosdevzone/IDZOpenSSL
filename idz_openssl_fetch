@@ -4,7 +4,7 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 # Some versions of curl seemed to misbehave, so make this configurable
 #
 #CURL=curl
-CURL=/usr/local/bin/curl
+CURL=/usr/bin/curl
 #
 # Load the configuration
 #
