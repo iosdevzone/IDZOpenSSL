@@ -5,8 +5,8 @@ export IDZ_BUILD_ROOT=`pwd`/IDZBuildRoot
 echo "IDZ_BUILD_ROOT=$IDZ_BUILD_ROOT"
 
 pushd IDZOpenSSL
-./idz_openssl_fetch
-./idz_openssl_patch
+#./idz_openssl_fetch
+#./idz_openssl_patch
 ./idz_openssl_build
 ./idz_openssl_fw
 popd

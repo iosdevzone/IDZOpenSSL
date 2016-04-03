@@ -1,0 +1,80 @@
+#!/bin/bash
+if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourced."; return 255; fi
+
+. idz_openssl_config.bash
+
+pushd $IDZ_OPENSSL_SRC_DIR > /dev/null
+for IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILDLIST; do
+  TRIPLET=(${IDZ_OPENSSL_BUILD//-/ })
+  OS=${TRIPLET[0]}
+  ARCH=${TRIPLET[1]}
+  COMPILER=${TRIPLET[2]}
+  FORK_FLAG="-DHAVE_FORK=0"
+  case $IDZ_OPENSSL_BUILD in
+    ios-arm*-*)
+      PLATFORM=iPhoneOS
+      MIN_VERSION_FLAG="-miphoneos-version-min=8.0"
+      ;;
+    ios-*-*)
+      PLATFORM=iPhoneSimulator
+      MIN_VERSION_FLAG="-mios-simulator-version-min=8.0"
+      ;;
+    watchos-arm*-*)
+      PLATFORM=WatchOS
+      MIN_VERSION_FLAG="-mwatchos-version-min=2.0"
+      ;;
+    watchos-*-*)
+      PLATFORM=WatchSimulator
+      MIN_VERSION_FLAG="-mwatchos-simulator-version-min=2.0"
+      ;;
+    tvos-arm*-*)
+      PLATFORM=AppleTVOS
+      MIN_VERSION_FLAG="-mappletvos-version-min=9.0"
+      ;;
+    tvos-*-*)
+      PLATFORM=AppleTVSimulator
+      MIN_VERSION_FLAG="-mtvos-simulator-version-min=9.0"
+      ;;
+    esac
+
+  SDK=$(echo $PLATFORM | awk '{print tolower($0)}')
+
+  export CC="$(xcrun -sdk $SDK -find $COMPILER) -fembed-bitcode -arch $ARCH $MIN_VERSION_FLAG $FORK_FLAG"
+  export CROSS_TOP=$(xcrun -sdk $SDK --show-sdk-platform-path)/Developer
+  export CROSS_SDK=$PLATFORM.sdk
+
+  if [[ ! -d $CROSS_TOP/SDKs/$CROSS_SDK ]] ; then
+    echo ERROR: Failed to find $CROSS_TOP/SDKs/$CROSS_SDK
+    exit 255
+  fi
+
+  mkdir -p $IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
+  IDZ_OPENSSL_LOG_DIR=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD
+  logCheckCommand() {
+    echo $IDZ_OPENSSL_BUILD: $1
+    LOG=$IDZ_OPENSSL_LOG_DIR/$1.log
+    $2 > $LOG 2>&1
+    if [[ $? != 0 ]]; then
+      echo "ERROR: $1 failed for $IDZ_OPENSSL_BUILD"
+      echo "CC=$CC"
+      echo "CROSS_TOP=$CROSS_TOP"
+      echo "CROSS_SDK=$CROSS_SDK"
+      echo "===================="
+      tail -10 $LOG
+      echo "===================="
+      echo "For further information see log $LOG"
+      exit 255
+    fi
+  }
+
+  logCheckCommand "configure" "./Configure no-engines no-asm iphoneos-cross --openssldir=$IDZ_OPENSSL_BUILD_DIR/$IDZ_OPENSSL_BUILD"
+
+  logCheckCommand "clean" "make clean"
+
+  logCheckCommand "depend" "make depend"
+
+  logCheckCommand "build" "make"
+
+  logCheckCommand "install" "make install_sw"
+
+done

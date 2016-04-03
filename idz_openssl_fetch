@@ -1,40 +1,58 @@
 #!/bin/bash
 if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourced."; return 255; fi
-
+#
+# Some versions of curl seemed to misbehave, so make this configurable
+#
+#CURL=curl
+CURL=/usr/local/opt/curl/bin/curl
+#
+# Load the configuration
+#
 . idz_openssl_config.bash
-
+#
+# Called after most operations to ensure they succeeded
+#
 function idz_error_check ()
 {
   if [ $1 -ne 0 ]; then
     exit $1
   fi
 }
-
+#
+# Create the OpenSSL dir we will be working in
+#
 echo "Making directory $IDZ_OPENSSL_DIR"
 mkdir -p $IDZ_OPENSSL_DIR
 pushd $IDZ_OPENSSL_DIR > /dev/null
-
+#
+# Download the source archive
+#
 echo "Downloading $IDZ_OPENSSL_TAR"
-curl -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_TAR
+$CURL -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_TAR
 idz_error_check $?
-
-echo "Downloading $IDZ_OPENSSL_MD5"
-curl -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_MD5
+# ... and the SHA1 message digest ...
+echo "Downloading $IDZ_OPENSSL_SHA1"
+$CURL -O $IDZ_OPENSSL_URL/$IDZ_OPENSSL_SHA1
 idz_error_check $?
-
-calculated_md5=$(md5 $IDZ_OPENSSL_TAR | cut -f 2 -d "=")
-expected_md5=$(cat $IDZ_OPENSSL_MD5)
-echo "MD5 check: (expected=$expected_md5 calculated=$calculated_md5)"
-if [ $calculated_md5 != $expected_md5 ]; then 
-  echo "MD5 check: FAIL (expected=$expected_md5 calculated=$calculated_md5)"
+#
+# Check the SHA1 message digest
+#
+calculated=$(openssl sha1 $IDZ_OPENSSL_TAR | cut -f 2 -d "=")
+expected=$(cat $IDZ_OPENSSL_SHA1)
+echo "SHA1 check: (expected=$expected calculated=$calculated)"
+if [ $calculated != $expected ]; then
+  echo "SHA1 check: FAIL (expected=$expected calculated=$calculated)"
   exit 1
 fi
-echo "MD5 check: PASS"; 
-
+echo "SHA1 check: PASS";
+#
+# Decompress and untar the archive
+#
 echo "Decompressing $IDZ_OPENSSL_TAR"
 tar xfz $IDZ_OPENSSL_TAR
 idz_error_check $?
 echo "Decompression complete."
-
+#
+# Back to whence we came!
+#
 popd > /dev/null
-

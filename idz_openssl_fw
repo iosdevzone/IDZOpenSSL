@@ -3,45 +3,117 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 
 . idz_openssl_config.bash
 
+CWD=`pwd`
+#
+# Sets the globals PLATFROM, SDK and MIN_VERSION_FLAG based on an
+# input triplet
+#
+function config() {
+  local triplet=$1
+  case $triplet in
+    ios-arm*-*)
+      PLATFORM=iPhoneOS
+      MIN_VERSION_FLAG="-miphoneos-version-min=8.0"
+      ;;
+    ios-*-*)
+      PLATFORM=iPhoneSimulator
+      MIN_VERSION_FLAG="-mios-simulator-version-min=8.0"
+      ;;
+    watchos-arm*-*)
+      PLATFORM=WatchOS
+      MIN_VERSION_FLAG="-mwatchos-version-min=2.0"
+      ;;
+    watchos-*-*)
+      PLATFORM=WatchSimulator
+      MIN_VERSION_FLAG="-mwatchos-simulator-version-min=2.0"
+      ;;
+    tvos-arm*-*)
+      PLATFORM=AppleTVOS
+      MIN_VERSION_FLAG="-mappletvos-version-min=9.0"
+      ;;
+    tvos-*-*)
+      PLATFORM=AppleTVSimulator
+      MIN_VERSION_FLAG="-mtvos-simulator-version-min=9.0"
+      ;;
+    esac
+
+  SDK=$(echo $PLATFORM | awk '{print tolower($0)}')
+}
+
+#
+# Combine libcrypto.a and libssl.a into libOpenSSL.a for all builds
+#
 for BUILD in $IDZ_OPENSSL_BUILDLIST
 do
-  pushd $IDZ_OPENSSL_BUILD_DIR/$BUILD/lib
+  pushd $IDZ_OPENSSL_BUILD_DIR/$BUILD/lib > /dev/null
   ar -x libcrypto.a
   ar -x libssl.a
-  ar -cr libOpenSSL.a *.o
-  rm *.o
-  popd
+#  ar -cr libOpenSSL.a *.o
+  xcrun libtool -static -o libOpenSSL.a -no_warning_for_no_symbols *.o
+  config $BUILD
+  TRIPLE=(${BUILD//-/ })
+  ARCH=${TRIPLE[1]}
+  xcrun -sdk ${SDK} clang ${MIN_VERSION_FLAG} -fembed-bitcode -dynamiclib -arch $ARCH -all_load libOpenSSL.a -o libOpenSSL.dylib
+#  rm *.o
+  popd > /dev/null
 done
 
-mkdir -p $IDZ_OPENSSL_BUILD_DIR/fatlib
-lipo -create -output $IDZ_OPENSSL_BUILD_DIR/fatlib/libOpenSSL.a \
-  -arch armv7  $IDZ_OPENSSL_BUILD_DIR/ios-armv7-clang/lib/libOpenSSL.a \
-  -arch armv7s $IDZ_OPENSSL_BUILD_DIR/ios-armv7s-clang/lib/libOpenSSL.a \
-  -arch arm64  $IDZ_OPENSSL_BUILD_DIR/ios-arm64-clang/lib/libOpenSSL.a \
-  -arch i386 $IDZ_OPENSSL_BUILD_DIR/ios-i386-clang/lib/libOpenSSL.a \
-  -arch x86_64 $IDZ_OPENSSL_BUILD_DIR/ios-x86_64-clang/lib/libOpenSSL.a
+#
+# Create dynamic and static fat libraries for all OSes
+#
+for OS in ios tvos watchos macosx ; do
+  for SUFFIX in a dylib ; do
+    OUTPUT_FILE_NAME=libOpenSSL.$SUFFIX
+    OUTPUT_FILE_PATH=$IDZ_OPENSSL_BUILD_DIR/fatlib/$OS/$OUTPUT_FILE_NAME
+    OS_PATTERN=$IDZ_OPENSSL_BUILD_DIR/$OS-'*-*'/lib/libOpenSSL.$SUFFIX
+    OS_FILES=$(echo $OS_PATTERN)
+    # OS_FILES holds the result of globbing OS_PATTERN, so if
+    # these are equal there must have been no matches.
+    if [[ "$OS_FILES" != "$OS_PATTERN" ]]; then
+      echo "Creating Universal library $OUTPUT_FILE_NAME for $OS"
+      mkdir -p $IDZ_OPENSSL_BUILD_DIR/fatlib/$OS
+      lipo -create -output $OUTPUT_FILE_PATH $OS_FILES
+    fi
+  done
+done
 
-FWBASE=$IDZ_OPENSSL_DIR/OpenSSL.framework
-if [ -e $FWBASE ] ; then 
-  mv $FWBASE $FWBASE.bak
-fi
+#
+# Create a framework for all (successfully bult) OSes
+#
+for OS in ios tvos watchos macosx ; do
+  A_PATH=$IDZ_OPENSSL_BUILD_DIR/fatlib/$OS/libOpenSSL.a
+  DYLIB_PATH=$IDZ_OPENSSL_BUILD_DIR/fatlib/$OS/libOpenSSL.dylib
+  if [[ -e $A_PATH && -e $DYLIB_PATH ]] ; then
+    FWBASE=$IDZ_OPENSSL_DIR/$OS/OpenSSL.framework
+    if [ -e $FWBASE ] ; then
+      rm -rf $FWBASE
+    fi
+    VERSIONBASE=$FWBASE/Verions/$IDZ_OPENSSL_VERSION
+    mkdir -p $VERSIONBASE/lib
+    cp -R $IDZ_OPENSSL_BUILD_DIR/ios-armv7-clang/include $VERSIONBASE
+    cp $A_PATH $VERSIONBASE/lib
+    cp $DYLIB_PATH $VERSIONBASE/lib
 
-VERSIONBASE=$FWBASE/Verions/$IDZ_OPENSSL_VERSION
-mkdir -p $VERSIONBASE/lib
-cp -R $IDZ_OPENSSL_BUILD_DIR/ios-armv7-clang/include $VERSIONBASE
-cp $IDZ_OPENSSL_BUILD_DIR/fatlib/libOpenSSL.a $VERSIONBASE/lib
+    pushd $FWBASE > /dev/null
+    # if [ -e Headers ] ; then
+    #   rm Headers
+    # fi
+    ln -s Verions/$IDZ_OPENSSL_VERSION/include/openssl Headers
 
-pushd $FWBASE
-if [ -e Headers ] ; then
-  rm Headers
-fi
-ln -s Verions/$IDZ_OPENSSL_VERSION/include/openssl Headers
+    # if [ -e OpenSSL ] ; then
+    #   rm OpenSSL
+    # fi
 
-if [ -e OpenSSL ] ; then
-  rm OpenSSL
-fi
+    ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.dylib OpenSSL
 
-ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.a OpenSSL
-popd
+    popd > /dev/null
 
-echo "Created framework in $IDZ_OPENSSL_DIR/OpenSSL.framework"
+    # Copy the module map
+    mkdir $FWBASE/Modules
+    cp $CWD/module.modulemap $FWBASE/Modules
+
+    # Copy the umbrella header file
+    cp $CWD/OpenSSL.h $FWBASE/Headers
+    echo "Created framework in $FWBASE"
+  fi
+done
