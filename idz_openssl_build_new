@@ -10,6 +10,8 @@ for IDZ_OPENSSL_BUILD in $IDZ_OPENSSL_BUILDLIST; do
   ARCH=${TRIPLET[1]}
   COMPILER=${TRIPLET[2]}
   FORK_FLAG="-DHAVE_FORK=0"
+
+  idz_config $IDZ_OPENSSL_BUILD
   case $IDZ_OPENSSL_BUILD in
     ios-arm*-*)
       PLATFORM=iPhoneOS

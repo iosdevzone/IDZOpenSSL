@@ -31,3 +31,43 @@ function idz_error_check ()
     exit $1
   fi
 }
+
+#
+# Sets the globals PLATFROM, SDK and MIN_VERSION_FLAG based on an
+# input triplet
+# Used by `idz_openssl_build_new` and `idz_openssl_fw`
+function idz_config() {
+  local triplet=$1
+  FORK_FLAG="-DHAVE_FORK=0"
+  case $triplet in
+    ios-arm*-*)
+      PLATFORM=iPhoneOS
+      MIN_VERSION_FLAG="-miphoneos-version-min=8.0"
+      ;;
+    ios-*-*)
+      PLATFORM=iPhoneSimulator
+      MIN_VERSION_FLAG="-mios-simulator-version-min=8.0"
+      ;;
+    watchos-arm*-*)
+      PLATFORM=WatchOS
+      MIN_VERSION_FLAG="-mwatchos-version-min=2.0"
+      ;;
+    watchos-*-*)
+      PLATFORM=WatchSimulator
+      MIN_VERSION_FLAG="-mwatchos-simulator-version-min=2.0"
+      ;;
+    tvos-arm*-*)
+      PLATFORM=AppleTVOS
+      MIN_VERSION_FLAG="-mappletvos-version-min=9.0"
+      ;;
+    tvos-*-*)
+      PLATFORM=AppleTVSimulator
+      MIN_VERSION_FLAG="-mtvos-simulator-version-min=9.0"
+      ;;
+  esac
+  local array=(${triplet//-/ })
+  OS=${array[0]}
+  ARCH=${array[1]}
+  COMPILER=${array[2]}
+  SDK=$(echo $PLATFORM | awk '{print tolower($0)}')
+}

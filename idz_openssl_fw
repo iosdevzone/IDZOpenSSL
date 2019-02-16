@@ -4,41 +4,7 @@ if [[ $BASH_SOURCE != $0 ]]; then echo "$BASH_SOURCE must be executed, not sourc
 . idz_openssl_config.bash
 
 CWD=`pwd`
-#
-# Sets the globals PLATFROM, SDK and MIN_VERSION_FLAG based on an
-# input triplet
-#
-function config() {
-  local triplet=$1
-  case $triplet in
-    ios-arm*-*)
-      PLATFORM=iPhoneOS
-      MIN_VERSION_FLAG="-miphoneos-version-min=8.0"
-      ;;
-    ios-*-*)
-      PLATFORM=iPhoneSimulator
-      MIN_VERSION_FLAG="-mios-simulator-version-min=8.0"
-      ;;
-    watchos-arm*-*)
-      PLATFORM=WatchOS
-      MIN_VERSION_FLAG="-mwatchos-version-min=2.0"
-      ;;
-    watchos-*-*)
-      PLATFORM=WatchSimulator
-      MIN_VERSION_FLAG="-mwatchos-simulator-version-min=2.0"
-      ;;
-    tvos-arm*-*)
-      PLATFORM=AppleTVOS
-      MIN_VERSION_FLAG="-mappletvos-version-min=9.0"
-      ;;
-    tvos-*-*)
-      PLATFORM=AppleTVSimulator
-      MIN_VERSION_FLAG="-mtvos-simulator-version-min=9.0"
-      ;;
-    esac
 
-  SDK=$(echo $PLATFORM | awk '{print tolower($0)}')
-}
 
 #
 # Combine libcrypto.a and libssl.a into libOpenSSL.a for all builds
@@ -50,7 +16,7 @@ do
   ar -x libssl.a
 #  ar -cr libOpenSSL.a *.o
   xcrun libtool -static -o libOpenSSL.a -no_warning_for_no_symbols *.o
-  config $BUILD
+  idz_config $BUILD
   TRIPLE=(${BUILD//-/ })
   ARCH=${TRIPLE[1]}
   xcrun -sdk ${SDK} clang ${MIN_VERSION_FLAG} -fembed-bitcode -dynamiclib -arch $ARCH -all_load libOpenSSL.a -o libOpenSSL.dylib
@@ -78,13 +44,13 @@ for OS in ios tvos watchos macosx ; do
 done
 
 #
-# Create a framework for all (successfully bult) OSes
+# Create a pseudo-framework for all (successfully bult) OSes
 #
 for OS in ios tvos watchos macosx ; do
   A_PATH=$IDZ_OPENSSL_BUILD_DIR/fatlib/$OS/libOpenSSL.a
   DYLIB_PATH=$IDZ_OPENSSL_BUILD_DIR/fatlib/$OS/libOpenSSL.dylib
   if [[ -e $A_PATH && -e $DYLIB_PATH ]] ; then
-    FWBASE=$IDZ_OPENSSL_DIR/$OS/OpenSSL.framework
+    FWBASE=$IDZ_OPENSSL_DIR/Frameworks/$OS-static/OpenSSL.framework
     if [ -e $FWBASE ] ; then
       rm -rf $FWBASE
     fi
@@ -95,17 +61,8 @@ for OS in ios tvos watchos macosx ; do
     cp $DYLIB_PATH $VERSIONBASE/lib
 
     pushd $FWBASE > /dev/null
-    # if [ -e Headers ] ; then
-    #   rm Headers
-    # fi
     ln -s Verions/$IDZ_OPENSSL_VERSION/include/openssl Headers
-
-    # if [ -e OpenSSL ] ; then
-    #   rm OpenSSL
-    # fi
-
-    ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.dylib OpenSSL
-
+    ln -s Verions/$IDZ_OPENSSL_VERSION/lib/libOpenSSL.a OpenSSL
     popd > /dev/null
 
     # Copy the module map
@@ -117,3 +74,14 @@ for OS in ios tvos watchos macosx ; do
     echo "Created framework in $FWBASE"
   fi
 done
+
+#
+# Build the "real" dynamic frameworks using xcodebuild
+#
+xcodebuild -project OpenSSLFrameworkProjects/OpenSSL.xcodeproj -alltargets
+rm -rf $IDZ_OPENSSL_DIR/Frameworks/tvos-dynamic
+mv -f OpenSSLFrameworkProjects/build/Release-appletvos $IDZ_OPENSSL_DIR/Frameworks/tvos-dynamic
+rm -rf $IDZ_OPENSSL_DIR/Frameworks/ios-dynamic
+mv OpenSSLFrameworkProjects/build/Release-iphoneos $IDZ_OPENSSL_DIR/Frameworks/ios-dynamic
+rm -rf $IDZ_OPENSSL_DIR/Frameworks/watchos-dynamic
+mv OpenSSLFrameworkProjects/build/Release-watchos $IDZ_OPENSSL_DIR/Frameworks/watchos-dynamic

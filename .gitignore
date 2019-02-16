@@ -1,1 +1,8 @@
 1.0.1i
+openssl-*
+ios-*
+tvos-*
+watchos-*
+osx-*
+fatlib
+Frameworks
